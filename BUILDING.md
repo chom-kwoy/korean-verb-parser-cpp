@@ -1,67 +1,104 @@
 # Building with CMake
 
+## Prerequisites
+
+- A C++20-capable compiler (GCC 11+, Clang 14+, or MSVC 2022).
+- CMake ≥ 3.28.
+- For the Python package only: Python ≥ 3.8 with development headers
+  (e.g. `python3-dev` on Debian/Ubuntu).
+
 ## Dependencies
 
-Third-party dependencies (fmt, nlohmann_json, and Catch2 for tests) are
-fetched automatically at configure time via CMake's `FetchContent`, so no
-external package manager is required. A working internet connection is needed
-the first time you configure the project.
+Third-party dependencies (fmt, nlohmann_json, and Catch2 for tests) are fetched
+automatically at configure time via CMake's `FetchContent`, so no external
+package manager is required. A working internet connection is needed the first
+time you configure the project.
 
 ## Build
 
-This project doesn't require any special command-line flags to build to keep
-things simple.
+This project doesn't require any special command-line flags to build.
 
-Here are the steps for building in release mode with a single-configuration
-generator, like the Unix Makefiles one:
+With a single-configuration generator (e.g. Unix Makefiles, Ninja):
 
 ```sh
 cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-Here are the steps for building in release mode with a multi-configuration
-generator, like the Visual Studio ones:
+With a multi-configuration generator (e.g. Visual Studio):
 
 ```sh
 cmake -S . -B build
 cmake --build build --config Release
 ```
 
+This builds the `parser` command-line executable (see the
+[README](README.md#command-line-usage) for its input format):
+
+```sh
+./build/parser < request.json
+```
+
 ### Building with MSVC
 
-Note that MSVC by default is not standards compliant and you need to pass some
-flags to make it behave properly. See the `flags-msvc` preset in the
-[CMakePresets.json](CMakePresets.json) file for the flags and with what
-variable to provide them to CMake during configuration.
+MSVC is not standards-compliant by default and needs some flags to behave
+properly. See the `flags-msvc` preset in
+[CMakePresets.json](CMakePresets.json) for the flags and the variable to provide
+them in.
 
-### Building on Apple Silicon
+## Tests
 
-CMake supports building on Apple Silicon properly since 3.20.1. Make sure you
-have the [latest version][1] installed.
+Tests use [Catch2][catch2] and require developer mode. They read the example
+grammar via a relative path, so run them from the repository root:
+
+```sh
+cmake -S . -B build -D parser_DEVELOPER_MODE=ON
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+Run a single Catch2 test case by tag, and the optional (slow, not part of
+`ctest`) benchmark, directly from the repository root:
+
+```sh
+./build/test/parser_test "[test_basic]"          # or [test_complex]
+./build/test/parser_benchmark "[benchmark]"      # microbenchmark
+```
+
+See [HACKING.md](HACKING.md) for the full set of developer-mode targets
+(formatting, spell-checking, coverage, docs).
+
+## Python package
+
+The nanobind bindings are packaged with [scikit-build-core][skbuild]. From the
+repository root, with Python development headers installed:
+
+```sh
+pip install .
+```
+
+This builds the compiled extension via CMake and installs the
+`korean_verb_parser` package. To build the extension as part of a plain CMake
+build instead (e.g. for development), enable `parser_BUILD_PYTHON`:
+
+```sh
+cmake -S . -B build -D parser_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release
+cmake --build build --target parser_python
+```
 
 ## Install
 
-This project doesn't require any special command-line flags to install to keep
-things simple. As a prerequisite, the project has to be built with the above
-commands already.
-
-The below commands require at least CMake 3.15 to run, because that is the
-version in which [Install a Project][2] was added.
-
-Here is the command for installing the release mode artifacts with a
-single-configuration generator, like the Unix Makefiles one:
+To install the C++ executable (single-configuration generators):
 
 ```sh
 cmake --install build
 ```
 
-Here is the command for installing the release mode artifacts with a
-multi-configuration generator, like the Visual Studio ones:
+For multi-configuration generators, specify the configuration:
 
 ```sh
 cmake --install build --config Release
 ```
 
-[1]: https://cmake.org/download/
-[2]: https://cmake.org/cmake/help/latest/manual/cmake.1.html#install-a-project
+[catch2]: https://github.com/catchorg/Catch2
+[skbuild]: https://scikit-build-core.readthedocs.io/
