@@ -1,0 +1,25 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "nanobind>=2.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "korean-verb-parser"
+version = "0.1.0"
+description = "Viterbi parser for Korean verb morphology (PCFG)"
+readme = "README.md"
+requires-python = ">=3.8"
+
+[project.urls]
+Homepage = "https://github.com/chom-kwoy/korean-verb-parser-cpp"
+
+[tool.scikit-build]
+minimum-version = "0.10"
+build-dir = "build/{wheel_tag}"
+# Pure-Python package source; the compiled _core extension is added by CMake's
+# install rule into the same directory.
+wheel.packages = ["python/korean_verb_parser"]
+# Only build the extension module, not the C++ executable.
+build.targets = ["parser_python"]
+
+[tool.scikit-build.cmake.define]
+parser_BUILD_PYTHON = "ON"

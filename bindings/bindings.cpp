@@ -13,7 +13,7 @@
 namespace nb = nanobind;
 using namespace nb::literals;
 
-NB_MODULE(parser, m)
+NB_MODULE(_core, m)
 {
     m.doc() = "Python bindings for the Korean verb PCFG Viterbi parser.";
 
@@ -39,8 +39,10 @@ NB_MODULE(parser, m)
             "Return the tree serialized as a JSON string.")
         .def("__str__", [](parser::Tree const& tree) { return tree.str(); })
         .def("__repr__",
-             [](parser::Tree const& tree)
-             { return "<parser.Tree " + tree.symbol.name() + " log_prob=" + std::to_string(tree.log_prob) + ">"; });
+             [](parser::Tree const& tree) {
+                 return "<korean_verb_parser.Tree " + tree.symbol.name() + " log_prob=" + std::to_string(tree.log_prob)
+                     + ">";
+             });
 
     nb::class_<parser::ViterbiParser>(m, "ViterbiParser", "Top-k Viterbi parser for a Pcfg.")
         .def(nb::init<parser::Pcfg const&>(), "grammar"_a)

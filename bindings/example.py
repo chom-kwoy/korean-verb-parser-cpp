@@ -1,23 +1,22 @@
-"""Minimal usage example for the `parser` extension module.
+"""Minimal usage example for the korean_verb_parser package.
 
-Build the module first (from the project root):
+Install the package first (from the project root):
 
-    cmake -S . -B build -D parser_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release
-    cmake --build build
+    pip install .
 
-Then run this from the directory containing the built `parser` module, e.g.:
+Then run this from the project root (so examples/prods.json resolves):
 
-    PYTHONPATH=build python bindings/example.py
+    python bindings/example.py
 """
 
 import json
 
-import parser
+import korean_verb_parser as kvp
 
 with open("examples/prods.json", encoding="utf-8") as fh:
-    grammar = parser.pcfg_from_json(fh.read())
+    grammar = kvp.pcfg_from_json(fh.read())
 
-viterbi = parser.ViterbiParser(grammar)
+viterbi = kvp.ViterbiParser(grammar)
 
 trees = viterbi.parse("hakeysssupnitaGipnita", top_k=10)
 

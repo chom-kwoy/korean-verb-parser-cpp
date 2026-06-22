@@ -5,6 +5,10 @@
 build/
 cmake-build-*/
 prefix/
+dist/
+*.egg-info/
+__pycache__/
+*.so
 .clangd
 CMakeLists.txt.user
 CMakeUserPresets.json

@@ -77,24 +77,44 @@ if(parser_BUILD_PYTHON)
 
   find_package(Python 3.8 REQUIRED COMPONENTS Interpreter Development.Module)
 
-  FetchContent_Declare(
-      nanobind
-      GIT_REPOSITORY https://github.com/wjakob/nanobind
-      GIT_TAG        v2.13.0  # bump as desired
-      EXCLUDE_FROM_ALL
-  )
-  FetchContent_MakeAvailable(nanobind)
+  # Prefer a pip-installed nanobind (this is how it is provided when building a
+  # wheel via scikit-build-core); fall back to fetching it from source for a
+  # plain standalone CMake build.
+  execute_process(
+      COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      OUTPUT_VARIABLE nanobind_cmake_dir
+      RESULT_VARIABLE nanobind_query_result)
+  if(nanobind_query_result EQUAL 0)
+    list(APPEND CMAKE_PREFIX_PATH "${nanobind_cmake_dir}")
+    find_package(nanobind CONFIG REQUIRED)
+  else()
+    FetchContent_Declare(
+        nanobind
+        GIT_REPOSITORY https://github.com/wjakob/nanobind
+        GIT_TAG        v2.13.0  # bump as desired
+        EXCLUDE_FROM_ALL
+    )
+    FetchContent_MakeAvailable(nanobind)
+  endif()
 
-  # Produces an importable extension module named `parser`.
+  # Builds the compiled extension korean_verb_parser._core.
   nanobind_add_module(parser_python NB_STATIC bindings/bindings.cpp)
-  set_target_properties(parser_python PROPERTIES OUTPUT_NAME parser)
+  set_target_properties(parser_python PROPERTIES OUTPUT_NAME _core)
   target_link_libraries(parser_python PRIVATE parser_lib)
   target_compile_features(parser_python PRIVATE cxx_std_20)
+
+  # When building a wheel, install the extension into the package directory.
+  if(DEFINED SKBUILD)
+    install(TARGETS parser_python LIBRARY DESTINATION korean_verb_parser)
+  endif()
 endif()
 
 # ---- Install rules ----
 
-if(NOT CMAKE_SKIP_INSTALL_RULES)
+# Skip the C++ executable's install rules when building a Python wheel, where
+# only the extension module should be installed.
+if(NOT CMAKE_SKIP_INSTALL_RULES AND NOT DEFINED SKBUILD)
   include(cmake/install-rules.cmake)
 endif()
 
