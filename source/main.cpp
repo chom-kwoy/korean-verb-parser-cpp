@@ -2,7 +2,6 @@
 #include <exception>
 #include <iostream>
 #include <string>
-#include <variant>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -19,23 +18,7 @@ void parse_from_stream(std::istream& istream)
 
     const auto input = nlohmann::json::parse(istream);
 
-    std::vector<parser::LetterProd> productions {};
-    for (auto&& rule : input["rules"]) {
-        auto lhs = rule["lhs"].get<std::string>();
-        auto prob = rule["prob"].get<float>();
-        auto rhs = std::vector<std::variant<parser::Nonterminal, parser::LetterType>> {};
-        for (auto&& item : rule["rhs"]) {
-            if (item.is_object()) {
-                rhs.emplace_back(Symb(item["name"].get<std::string>()));
-            } else {
-                rhs.emplace_back(item.get<std::string>()[0]);
-            }
-        }
-        productions.push_back({Symb(lhs), rhs, prob});
-    }
-
-    const auto start_symbol = input["start_symbol"].get<std::string>();
-    const auto parser = parser::ViterbiParser(parser::Pcfg(Symb(start_symbol), productions));
+    const auto parser = parser::ViterbiParser(parser::pcfg_from_json(istream));
 
     std::vector<char> tokens {};
     for (const char chr : input["sentence"].get<std::string>()) {

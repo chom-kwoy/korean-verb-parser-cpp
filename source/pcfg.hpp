@@ -1,5 +1,6 @@
 #pragma once
 
+#include <istream>
 #include <map>
 #include <set>
 #include <vector>
@@ -46,5 +47,7 @@ class Pcfg
     auto start() const -> Nonterminal;
     auto productions() const -> std::vector<LetterProd> const&;
 };
+
+auto pcfg_from_json(std::istream& istream) -> Pcfg;
 
 }  // namespace parser

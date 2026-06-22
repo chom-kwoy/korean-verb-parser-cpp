@@ -37,25 +37,9 @@ TEST_CASE("Test", "[test_complex]")
 {
     using Symb = parser::Nonterminal;
     auto t0 = std::chrono::high_resolution_clock::now();
-    std::vector<parser::LetterProd> productions {};
 
     auto prods_file = std::ifstream("examples/prods.json");
-    auto rules = nlohmann::json::parse(prods_file);
-    for (auto&& rule : rules) {
-        auto lhs = rule["lhs"].get<std::string>();
-        auto prob = rule["prob"].get<float>();
-        auto rhs = std::vector<std::variant<parser::Nonterminal, parser::LetterType>> {};
-        for (auto&& item : rule["rhs"]) {
-            if (item.is_object()) {
-                rhs.push_back(Symb(item["name"].get<std::string>()));
-            } else {
-                rhs.push_back(item.get<std::string>()[0]);
-            }
-        }
-        productions.push_back({Symb(lhs), rhs, prob});
-    }
-
-    const auto parser = parser::ViterbiParser(parser::Pcfg(Symb("Noun"), productions));
+    const auto parser = parser::ViterbiParser(parser::pcfg_from_json(prods_file));
 
     std::vector<char> tokens {};
     for (char chr : "hakeysssupnitaGipnita") {
