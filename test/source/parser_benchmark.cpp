@@ -11,8 +11,7 @@
 #include "pcfg.hpp"
 #include "viterbiparser.h"
 
-namespace
-{
+namespace {
 
 // Loads the Korean-verb grammar fixture. Path is relative, so the benchmark
 // must be run with the project root as the working directory.
@@ -21,13 +20,13 @@ auto load_productions(std::string const& path) -> std::vector<parser::LetterProd
     using Symb = parser::Nonterminal;
 
     auto prods_file = std::ifstream(path);
-    auto rules = nlohmann::json::parse(prods_file);
+    auto rules = nlohmann::json::parse(prods_file)["rules"];
 
-    std::vector<parser::LetterProd> productions {};
+    std::vector<parser::LetterProd> productions{};
     for (auto&& rule : rules) {
         auto lhs = rule["lhs"].get<std::string>();
         auto prob = rule["prob"].get<float>();
-        auto rhs = std::vector<std::variant<parser::Nonterminal, parser::LetterType>> {};
+        auto rhs = std::vector<std::variant<parser::Nonterminal, parser::LetterType>>{};
         for (auto&& item : rule["rhs"]) {
             if (item.is_object()) {
                 rhs.emplace_back(Symb(item["name"].get<std::string>()));
@@ -50,38 +49,37 @@ auto to_tokens(std::string const& text) -> std::vector<parser::LetterType>
     return tokens;
 }
 
-}  // namespace
+} // namespace
 
 TEST_CASE("Viterbi parser benchmark", "[.][benchmark]")
 {
-    using Symb = parser::Nonterminal;
-
     const auto productions = load_productions("examples/prods.json");
+    const auto start_symb = parser::Nonterminal("Noun");
     const auto tokens = to_tokens("hakeysssupnitaGipnita");
     constexpr int top_k = 10;
 
     // Sanity check that the workload actually produces parses, so we never
     // benchmark a silently-empty parse.
     {
-        const auto parser = parser::ViterbiParser(parser::Pcfg(Symb("Noun"), productions));
+        const auto parser = parser::ViterbiParser(parser::Pcfg(start_symb, productions));
         const auto result = parser.parse(tokens, top_k);
         REQUIRE(!result.empty());
     }
 
     BENCHMARK("Pcfg construction")
     {
-        return parser::Pcfg(Symb("Noun"), productions);
+        return parser::Pcfg(start_symb, productions);
     };
 
     BENCHMARK_ADVANCED("parse (grammar prebuilt)")(Catch::Benchmark::Chronometer meter)
     {
-        const auto parser = parser::ViterbiParser(parser::Pcfg(Symb("Noun"), productions));
+        const auto parser = parser::ViterbiParser(parser::Pcfg(start_symb, productions));
         meter.measure([&] { return parser.parse(tokens, top_k); });
     };
 
     BENCHMARK("Pcfg construction + parse")
     {
-        const auto parser = parser::ViterbiParser(parser::Pcfg(Symb("Noun"), productions));
+        const auto parser = parser::ViterbiParser(parser::Pcfg(start_symb, productions));
         return parser.parse(tokens, top_k);
     };
 }
