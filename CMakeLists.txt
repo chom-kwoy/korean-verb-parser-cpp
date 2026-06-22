@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.28)
+
+include(FetchContent)
 
 include(cmake/prelude.cmake)
 
@@ -32,10 +34,25 @@ target_include_directories(
 
 target_compile_features(parser_lib PUBLIC cxx_std_20)
 
-find_package(fmt REQUIRED)
-find_package(nlohmann_json 3.2.0 REQUIRED)
-
+## fmt ##
+FetchContent_Declare(
+    fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt
+    GIT_TAG        e69e5f977d458f2650bb346dadf2ad30c5320281  # 10.2.1
+    EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(fmt)
+set_property(TARGET fmt PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(parser_lib PRIVATE fmt::fmt)
+
+## nlohmann json ##
+FetchContent_Declare(
+    json
+    URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+    EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(json)
+set_property(TARGET nlohmann_json PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(parser_lib PUBLIC nlohmann_json::nlohmann_json)
 
 # ---- Declare executable ----
