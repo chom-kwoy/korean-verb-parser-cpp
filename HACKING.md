@@ -41,7 +41,7 @@ the project:
     {
       "name": "dev",
       "binaryDir": "${sourceDir}/build/dev",
-      "inherits": ["dev-mode", "conan", "ci-<os>"],
+      "inherits": ["dev-mode", "ci-<os>"],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
@@ -87,23 +87,11 @@ in the terminal.
 > in `Tools > Options > CMake` **prior to opening the project**, after which
 > you can manually configure using `Project > Configure Cache`.
 
-### Dependency manager
+### Dependencies
 
-The above preset will make use of the [conan][conan] dependency manager. After
-installing it, make sure you have a [Conan profile][profile] setup, then
-download the dependencies and generate the necessary CMake files by running
-this command in the project root:
-
-```sh
-conan install . -s build_type=Debug -b missing
-```
-
-Note that if your conan profile does not specify the same compiler, standard
-level, build type and runtime library as CMake, then that could potentially
-cause issues. See the link above for profiles documentation.
-
-[conan]: https://conan.io/
-[profile]: https://docs.conan.io/2/reference/config_files/profiles.html
+Third-party dependencies are fetched automatically at configure time via
+CMake's `FetchContent`, so no external package manager is required. A working
+internet connection is needed the first time you configure the project.
 
 ### Configure, build and test
 

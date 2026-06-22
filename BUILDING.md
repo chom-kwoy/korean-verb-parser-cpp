@@ -2,7 +2,10 @@
 
 ## Dependencies
 
-For a list of dependencies, please refer to [conanfile.py](conanfile.py).
+Third-party dependencies (fmt, nlohmann_json, and Catch2 for tests) are
+fetched automatically at configure time via CMake's `FetchContent`, so no
+external package manager is required. A working internet connection is needed
+the first time you configure the project.
 
 ## Build
 
@@ -13,8 +16,7 @@ Here are the steps for building in release mode with a single-configuration
 generator, like the Unix Makefiles one:
 
 ```sh
-conan install . -s build_type=Release -b missing
-cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=`pwd`/conan
+cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
@@ -22,8 +24,7 @@ Here are the steps for building in release mode with a multi-configuration
 generator, like the Visual Studio ones:
 
 ```sh
-conan install . -s build_type=Release -b missing
-cmake -S . -B build -DCMAKE_PREFIX_PATH=`pwd`/conan
+cmake -S . -B build
 cmake --build build --config Release
 ```
 
