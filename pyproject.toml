@@ -8,6 +8,8 @@ version = "0.1.0"
 description = "Viterbi parser for Korean verb morphology (PCFG)"
 readme = "README.md"
 requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE"]
 
 [project.urls]
 Homepage = "https://github.com/chom-kwoy/korean-verb-parser-cpp"

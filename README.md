@@ -105,7 +105,7 @@ See the [CONTRIBUTING](CONTRIBUTING.md) and [HACKING](HACKING.md) documents.
 
 ## Licensing
 
-No license has been chosen for this project yet.
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
 [viterbi]: https://en.wikipedia.org/wiki/Viterbi_algorithm
 [nltk]: https://www.nltk.org/
