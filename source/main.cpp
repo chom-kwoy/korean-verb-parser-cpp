@@ -12,13 +12,11 @@
 
 void parse_from_stream(std::istream& istream)
 {
-    using Symb = parser::Nonterminal;
-
     auto start_time = std::chrono::high_resolution_clock::now();
 
     const auto input = nlohmann::json::parse(istream);
 
-    const auto parser = parser::ViterbiParser(parser::pcfg_from_json(istream));
+    const auto parser = parser::ViterbiParser(parser::pcfg_from_json(input));
 
     std::vector<char> tokens {};
     for (const char chr : input["sentence"].get<std::string>()) {

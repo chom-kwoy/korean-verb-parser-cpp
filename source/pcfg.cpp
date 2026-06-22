@@ -156,10 +156,8 @@ auto Pcfg::productions() const -> std::vector<LetterProd> const&
     return m_productions;
 }
 
-auto pcfg_from_json(std::istream& istream) -> Pcfg
+auto pcfg_from_json(nlohmann::json const& input) -> Pcfg
 {
-    const auto input = nlohmann::json::parse(istream);
-
     std::vector<LetterProd> productions{};
     for (auto&& rule : input["rules"]) {
         auto lhs = rule["lhs"].get<std::string>();
@@ -177,6 +175,11 @@ auto pcfg_from_json(std::istream& istream) -> Pcfg
 
     const auto start_symbol = input["start_symbol"].get<std::string>();
     return Pcfg(Nonterminal(start_symbol), productions);
+}
+
+auto pcfg_from_json(std::istream& istream) -> Pcfg
+{
+    return pcfg_from_json(nlohmann::json::parse(istream));
 }
 
 }  // namespace parser
