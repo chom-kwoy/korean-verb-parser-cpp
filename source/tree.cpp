@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <iomanip>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -13,6 +14,18 @@
 #include "nonterminal.hpp"
 #include "pcfg.hpp"
 
+namespace
+{
+
+template<typename T, typename... Rest>
+void hash_combine(std::size_t& seed, const T& v, const Rest&... rest)
+{
+    seed ^= std::hash<T> {}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    (hash_combine(seed, rest), ...);
+}
+
+}  // namespace
+
 namespace parser
 {
 
@@ -21,6 +34,28 @@ Tree::Tree(Nonterminal symbol_, std::vector<TreeNode> children_, float log_prob_
     , children {std::move(children_)}
     , log_prob {log_prob_}
 {
+}
+
+auto TreeNodeHash::operator()(TreeNode const& node) const -> std::size_t
+{
+    std::size_t value = 0;
+    if (std::holds_alternative<LetterType>(node)) {
+        hash_combine(value, std::size_t {0}, std::get<LetterType>(node));
+    } else {
+        hash_combine(value, std::size_t {1}, std::hash<Tree> {}(*std::get<std::shared_ptr<const Tree>>(node)));
+    }
+    return value;
+}
+
+auto TreeNodeEq::operator()(TreeNode const& lhs, TreeNode const& rhs) const -> bool
+{
+    if (lhs.index() != rhs.index()) {
+        return false;
+    }
+    if (std::holds_alternative<LetterType>(lhs)) {
+        return std::get<LetterType>(lhs) == std::get<LetterType>(rhs);
+    }
+    return *std::get<std::shared_ptr<const Tree>>(lhs) == *std::get<std::shared_ptr<const Tree>>(rhs);
 }
 
 auto Tree::operator<(Tree const& rhs) const -> bool
@@ -36,13 +71,13 @@ auto Tree::operator<(Tree const& rhs) const -> bool
 
 auto Tree::operator==(Tree const& rhs) const -> bool
 {
-    if (symbol.name() != rhs.symbol.name()) {
+    if (not(symbol == rhs.symbol)) {
         return false;
     }
     if (children.size() != rhs.children.size()) {
         return false;
     }
-    return std::equal(children.begin(), children.end(), rhs.children.begin(), rhs.children.end());
+    return std::equal(children.begin(), children.end(), rhs.children.begin(), TreeNodeEq {});
 }
 
 auto Tree::str(int indent_level) const -> std::string
@@ -59,8 +94,8 @@ auto Tree::str(int indent_level) const -> std::string
             out << ",\n";
         }
         first = false;
-        if (std::holds_alternative<Tree>(child)) {
-            out << std::get<Tree>(child).str(indent_level + 1);
+        if (std::holds_alternative<std::shared_ptr<const Tree>>(child)) {
+            out << std::get<std::shared_ptr<const Tree>>(child)->str(indent_level + 1);
         } else if (std::holds_alternative<LetterType>(child)) {
             for (int i = 0; i < indent_level + 1; ++i) {
                 out << "  ";
@@ -98,7 +133,7 @@ auto Tree::json() const -> nlohmann::json
     for (auto&& child : children) {
         std::visit(
             overloaded {
-                [&](Tree const& tree) { children_json.push_back(tree.json()); },
+                [&](std::shared_ptr<const Tree> const& tree) { children_json.push_back(tree->json()); },
                 [&](LetterType letter) { children_json.push_back(std::string {letter}); },
             },
             child);
@@ -113,19 +148,13 @@ auto Tree::json() const -> nlohmann::json
 
 }  // namespace parser
 
-template<typename T, typename... Rest>
-void hash_combine(std::size_t& seed, const T& v, const Rest&... rest)
-{
-    seed ^= std::hash<T> {}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    (hash_combine(seed, rest), ...);
-}
-
 auto std::hash<parser::Tree>::operator()(const parser::Tree& tree) const -> std::size_t
 {
     std::size_t value = 0;
-    hash_combine(value, tree.symbol.name());
+    hash_combine(value, tree.symbol.id());
+    parser::TreeNodeHash node_hash;
     for (auto&& child : tree.children) {
-        hash_combine(value, child);
+        hash_combine(value, node_hash(child));
     }
 
     return value;

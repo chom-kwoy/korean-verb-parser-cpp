@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <variant>
 #include <vector>
@@ -17,7 +18,7 @@ struct Tree;
 
 }  // namespace parser
 
-// Overload hash function for TreeNode
+// Overload hash function for Tree
 template<>
 struct std::hash<parser::Tree>
 {
@@ -28,7 +29,23 @@ namespace parser
 {
 
 struct Tree;
-using TreeNode = std::variant<Tree, LetterType>;
+
+// A child is either a subtree or a terminal. Subtrees are held by shared_ptr so
+// that combining constituents only copies pointers, not whole subtrees.
+using TreeNode = std::variant<std::shared_ptr<const Tree>, LetterType>;
+
+// Structural hash and equality for TreeNode: subtrees are compared by value
+// (dereferencing the pointer), not by pointer identity. This is what lets the
+// chart deduplicate structurally-identical derivations.
+struct TreeNodeHash
+{
+    auto operator()(TreeNode const& node) const -> std::size_t;
+};
+
+struct TreeNodeEq
+{
+    auto operator()(TreeNode const& lhs, TreeNode const& rhs) const -> bool;
+};
 
 struct Tree
 {
