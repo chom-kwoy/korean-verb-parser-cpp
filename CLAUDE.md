@@ -35,6 +35,15 @@ Run the executable — it reads one JSON request on stdin and writes one JSON re
 echo '{"start_symbol":"S","rules":[...],"sentence":"AB","num_trees":1}' | ./build/parser
 ```
 
+### Python bindings (optional)
+
+nanobind bindings live in `bindings/bindings.cpp` and are gated behind `parser_BUILD_PYTHON` (default OFF; requires Python dev headers and fetches nanobind via FetchContent). They expose `pcfg_from_json(str)`, `ViterbiParser`, and a minimal `Tree` (`.log_prob`, `.label`, `.to_json()`, `str()`):
+```sh
+cmake -S . -B build -D parser_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release
+cmake --build build --target parser_python
+PYTHONPATH=build python bindings/example.py   # importable module name: `parser`
+```
+
 ## Architecture
 
 The pipeline is: **JSON grammar → `Pcfg` → `ViterbiParser::parse` → `Tree`s → JSON**.
