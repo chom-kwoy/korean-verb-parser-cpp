@@ -53,6 +53,11 @@ struct ProdIndex
 {
     std::unordered_map<int, std::vector<LetterProd const*>> by_first_nt;
     std::unordered_map<LetterType, std::vector<LetterProd const*>> by_first_term;
+    // Unary productions A -> B (single nonterminal rhs), indexed by B. These are
+    // the only productions that can fire repeatedly within a single span's
+    // fixpoint, since every other production reads strictly smaller, already
+    // complete sub-spans.
+    std::unordered_map<int, std::vector<LetterProd const*>> unary_by_first_nt;
 };
 
 auto build_prod_index(Pcfg const& grammar) -> ProdIndex
@@ -66,7 +71,11 @@ auto build_prod_index(Pcfg const& grammar) -> ProdIndex
         }
         auto const& first = prod.rhs[0];
         if (std::holds_alternative<Nonterminal>(first)) {
-            index.by_first_nt[std::get<Nonterminal>(first).id()].push_back(&prod);
+            const int cat = std::get<Nonterminal>(first).id();
+            index.by_first_nt[cat].push_back(&prod);
+            if (prod.rhs.size() == 1) {
+                index.unary_by_first_nt[cat].push_back(&prod);
+            }
         } else {
             index.by_first_term[std::get<LetterType>(first)].push_back(&prod);
         }
@@ -143,8 +152,8 @@ auto find_instantiations(Range range,
                          Chart const& chart,
                          ProdIndex const& index,
                          std::unordered_set<int> const& cats_starting_here,
-                         std::vector<LetterType> const& tokens)
-    -> std::vector<std::pair<LetterProd const*, std::vector<TreeNode>>>
+                         std::vector<LetterType> const& tokens,
+                         bool unary_only) -> std::vector<std::pair<LetterProd const*, std::vector<TreeNode>>>
 {
     auto result = std::vector<std::pair<LetterProd const*, std::vector<TreeNode>>> {};
 
@@ -157,13 +166,21 @@ auto find_instantiations(Range range,
         }
     };
 
+    // After the first pass only unary productions can produce anything new, so
+    // restrict to those and skip the (unchanging) terminal-first productions.
+    auto const& nt_index = unary_only ? index.unary_by_first_nt : index.by_first_nt;
+
     // Productions whose first symbol is a nonterminal present at range.begin.
     for (int cat : cats_starting_here) {
-        if (auto it = index.by_first_nt.find(cat); it != index.by_first_nt.end()) {
+        if (auto it = nt_index.find(cat); it != nt_index.end()) {
             for (auto const* production : it->second) {
                 consider(production);
             }
         }
+    }
+
+    if (unary_only) {
+        return result;
     }
 
     // Productions whose first symbol is the terminal at range.begin.
@@ -193,16 +210,19 @@ auto add_constituents_spanning(Range range,
     NtCell& chart_cell = chart[static_cast<std::size_t>(range.begin)][static_cast<std::size_t>(range.end)];
 
     // Since some of the grammar productions may be unary, we need to
-    // repeatedly try all of the productions until none of them add any
-    // new constituents.
+    // repeatedly try productions until none of them add any new constituents.
+    // The first pass tries every applicable production; later passes only need
+    // unary productions, the only ones that can chain within this span.
     bool changed = true;
+    bool first_pass = true;
     while (changed) {
         changed = false;
 
         // Find all ways instantiations of the grammar productions that
         // cover the span.
-        auto instantiations =
-            find_instantiations(range, chart, index, starts_at[static_cast<std::size_t>(range.begin)], tokens);
+        auto instantiations = find_instantiations(
+            range, chart, index, starts_at[static_cast<std::size_t>(range.begin)], tokens, /*unary_only=*/!first_pass);
+        first_pass = false;
 
         // For each production instantiation, add a new
         // Tree whose probability is the product of the

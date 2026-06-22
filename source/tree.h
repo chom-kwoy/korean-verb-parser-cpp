@@ -52,6 +52,10 @@ struct Tree
     Nonterminal symbol;
     std::vector<TreeNode> children;
     float log_prob = 0.F;
+    // Structural hash, computed once at construction. Because children are shared
+    // and carry their own cached hash, this is O(arity) rather than O(subtree),
+    // and std::hash<Tree> just returns it.
+    std::size_t hash_code = 0;
 
     Tree() = default;
     Tree(Nonterminal symbol, std::vector<TreeNode> children, float log_prob);

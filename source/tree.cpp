@@ -29,22 +29,36 @@ void hash_combine(std::size_t& seed, const T& v, const Rest&... rest)
 namespace parser
 {
 
-Tree::Tree(Nonterminal symbol_, std::vector<TreeNode> children_, float log_prob_)
-    : symbol {std::move(symbol_)}
-    , children {std::move(children_)}
-    , log_prob {log_prob_}
+namespace
 {
-}
-
-auto TreeNodeHash::operator()(TreeNode const& node) const -> std::size_t
+// Structural hash of a single child. For subtrees this reuses the child's cached
+// hash, so it never re-walks the subtree.
+auto node_hash(TreeNode const& node) -> std::size_t
 {
     std::size_t value = 0;
     if (std::holds_alternative<LetterType>(node)) {
         hash_combine(value, std::size_t {0}, std::get<LetterType>(node));
     } else {
-        hash_combine(value, std::size_t {1}, std::hash<Tree> {}(*std::get<std::shared_ptr<const Tree>>(node)));
+        hash_combine(value, std::size_t {1}, std::get<std::shared_ptr<const Tree>>(node)->hash_code);
     }
     return value;
+}
+}  // namespace
+
+Tree::Tree(Nonterminal symbol_, std::vector<TreeNode> children_, float log_prob_)
+    : symbol {std::move(symbol_)}
+    , children {std::move(children_)}
+    , log_prob {log_prob_}
+{
+    hash_combine(hash_code, symbol.id());
+    for (auto&& child : children) {
+        hash_combine(hash_code, node_hash(child));
+    }
+}
+
+auto TreeNodeHash::operator()(TreeNode const& node) const -> std::size_t
+{
+    return node_hash(node);
 }
 
 auto TreeNodeEq::operator()(TreeNode const& lhs, TreeNode const& rhs) const -> bool
@@ -71,6 +85,9 @@ auto Tree::operator<(Tree const& rhs) const -> bool
 
 auto Tree::operator==(Tree const& rhs) const -> bool
 {
+    if (hash_code != rhs.hash_code) {
+        return false;
+    }
     if (not(symbol == rhs.symbol)) {
         return false;
     }
@@ -150,12 +167,5 @@ auto Tree::json() const -> nlohmann::json
 
 auto std::hash<parser::Tree>::operator()(const parser::Tree& tree) const -> std::size_t
 {
-    std::size_t value = 0;
-    hash_combine(value, tree.symbol.id());
-    parser::TreeNodeHash node_hash;
-    for (auto&& child : tree.children) {
-        hash_combine(value, node_hash(child));
-    }
-
-    return value;
+    return tree.hash_code;
 }
