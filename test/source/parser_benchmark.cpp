@@ -94,3 +94,35 @@ TEST_CASE("Viterbi parser benchmark - 1K", "[.][benchmark-1k]")
         return parser.parse(tokens, top_k);
     };
 }
+
+TEST_CASE("Viterbi parser benchmark - 1K", "[.][benchmark-10k]")
+{
+    const auto grammar = load_grammar_json("examples/prods_10k.json");
+    const auto tokens = to_tokens("hakeysssupnitaGipnita");
+    constexpr int top_k = 10;
+
+    // Sanity check that the workload actually produces parses, so we never
+    // benchmark a silently-empty parse.
+    {
+        const auto parser = parser::ViterbiParser(parser::pcfg_from_json(grammar));
+        const auto result = parser.parse(tokens, top_k);
+        REQUIRE(!result.empty());
+    }
+
+    BENCHMARK("Pcfg construction")
+    {
+        return parser::pcfg_from_json(grammar);
+    };
+
+    BENCHMARK_ADVANCED("parse (grammar prebuilt)")(Catch::Benchmark::Chronometer meter)
+    {
+        const auto parser = parser::ViterbiParser(parser::pcfg_from_json(grammar));
+        meter.measure([&] { return parser.parse(tokens, top_k); });
+    };
+
+    BENCHMARK("Pcfg construction + parse")
+    {
+        const auto parser = parser::ViterbiParser(parser::pcfg_from_json(grammar));
+        return parser.parse(tokens, top_k);
+    };
+}

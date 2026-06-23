@@ -80,3 +80,27 @@ TEST_CASE("Test", "[test_1k]")
     std::cout << "Took " << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << "ms\n";
     std::cout.flush();
 }
+
+TEST_CASE("Test", "[test_10k]")
+{
+    using Symb = parser::Nonterminal;
+    auto t0 = std::chrono::high_resolution_clock::now();
+
+    auto prods_file = std::ifstream("examples/prods_10k.json");
+    const auto parser = parser::ViterbiParser(parser::pcfg_from_json(prods_file));
+
+    std::vector<char> tokens {};
+    for (char chr : "hakeysssupnitaGipnita") {
+        tokens.push_back(chr);
+    }
+    tokens.pop_back();
+
+    auto result = parser.parse(tokens, 10);
+    auto t1 = std::chrono::high_resolution_clock::now();
+
+    for (auto&& tree : result) {
+        std::cout << tree.str() << "\n";
+    }
+    std::cout << "Took " << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << "ms\n";
+    std::cout.flush();
+}
