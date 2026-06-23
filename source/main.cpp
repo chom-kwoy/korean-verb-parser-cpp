@@ -1,10 +1,14 @@
 #include <chrono>
+#include <cstdint>
 #include <exception>
 #include <iostream>
+#include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <simdjson.h>
 
 #include "nonterminal.hpp"
 #include "pcfg.hpp"
@@ -14,16 +18,25 @@ void parse_from_stream(std::istream& istream)
 {
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    const auto input = nlohmann::json::parse(istream);
+    std::ostringstream buffer;
+    buffer << istream.rdbuf();
+    const std::string request = buffer.str();
 
-    const auto parser = parser::ViterbiParser(parser::pcfg_from_json(input));
+    // The grammar (start_symbol + rules) is parsed straight into productions by
+    // pcfg_from_json (simdjson); we only need the sentence and tree count from
+    // the rest of the request, which a second lightweight pass reads cheaply.
+    const auto parser = parser::ViterbiParser(parser::pcfg_from_json(request));
 
-    std::vector<char> tokens {};
-    for (const char chr : input["sentence"].get<std::string>()) {
-        tokens.push_back(chr);
-    }
+    namespace oj = simdjson::ondemand;
+    oj::parser json_parser;
+    auto padded = simdjson::padded_string(request);
+    oj::document doc = json_parser.iterate(padded);
+    const std::string sentence {std::string_view {doc["sentence"].get_string()}};
+    const auto num_trees = static_cast<int>(std::int64_t {doc["num_trees"].get_int64()});
 
-    auto trees = parser.parse(tokens, input["num_trees"].get<int>());
+    std::vector<char> tokens(sentence.begin(), sentence.end());
+
+    auto trees = parser.parse(tokens, num_trees);
 
     auto json_trees = std::vector<nlohmann::json> {};
     for (auto&& tree : trees) {

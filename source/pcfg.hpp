@@ -1,9 +1,8 @@
 #pragma once
 
 #include <istream>
+#include <string_view>
 #include <vector>
-
-#include <nlohmann/json.hpp>
 
 #include "nonterminal.hpp"
 #include "production.hpp"
@@ -29,8 +28,9 @@ class Pcfg
 // Build a Pcfg from a JSON document of the form
 //   {"start_symbol": "...", "rules": [{"lhs": "...", "rhs": [...], "prob": ...}, ...]}
 // where each rhs entry is either {"name": "<Nonterminal>"} or a single-character
-// string terminal. The istream overload parses the stream first.
-auto pcfg_from_json(nlohmann::json const& input) -> Pcfg;
+// string terminal. Any extra top-level fields are ignored. The istream overload
+// slurps the stream into a buffer first. Parsing uses simdjson.
+auto pcfg_from_json(std::string_view json) -> Pcfg;
 auto pcfg_from_json(std::istream& istream) -> Pcfg;
 
 }  // namespace parser

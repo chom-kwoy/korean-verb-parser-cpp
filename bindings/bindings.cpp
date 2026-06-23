@@ -1,4 +1,3 @@
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -21,11 +20,7 @@ NB_MODULE(_core, m)
 
     m.def(
         "pcfg_from_json",
-        [](std::string const& json) -> parser::Pcfg
-        {
-            std::istringstream stream(json);
-            return parser::pcfg_from_json(stream);
-        },
+        [](std::string const& json) -> parser::Pcfg { return parser::pcfg_from_json(json); },
         "json"_a,
         "Build a Pcfg from a JSON string of the form "
         R"({"start_symbol": "...", "rules": [{"lhs": "...", "rhs": [...], "prob": ...}, ...]}.)");

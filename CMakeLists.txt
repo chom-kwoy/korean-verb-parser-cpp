@@ -45,7 +45,7 @@ FetchContent_MakeAvailable(fmt)
 set_property(TARGET fmt PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(parser_lib PRIVATE fmt::fmt)
 
-## nlohmann json ##
+## nlohmann json ## (used for output serialization)
 FetchContent_Declare(
     json
     URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
@@ -54,6 +54,29 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(json)
 set_property(TARGET nlohmann_json PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(parser_lib PUBLIC nlohmann_json::nlohmann_json)
+
+## simdjson ## (fast input parsing; nlohmann is convenient but ~5x slower to parse)
+set(SIMDJSON_DEVELOPER_MODE OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    simdjson
+    GIT_REPOSITORY https://github.com/simdjson/simdjson
+    GIT_TAG        v3.10.1
+    GIT_SHALLOW    TRUE
+    EXCLUDE_FROM_ALL
+    SYSTEM  # treat simdjson headers as system so its -Wundef etc. don't trip -Werror
+)
+FetchContent_MakeAvailable(simdjson)
+set_property(TARGET simdjson PROPERTY POSITION_INDEPENDENT_CODE ON)
+# simdjson's own sources aren't clean under this project's strict warning set
+# (notably -Werror=float-equal in to_chars.cpp). It's a vendored dependency, so
+# disable warnings for its own translation units; SYSTEM (above) keeps its
+# headers from warning in our translation units.
+if(MSVC)
+  target_compile_options(simdjson PRIVATE /w)
+else()
+  target_compile_options(simdjson PRIVATE -w)
+endif()
+target_link_libraries(parser_lib PRIVATE simdjson::simdjson)
 
 # ---- Declare executable ----
 
@@ -64,7 +87,7 @@ set_property(TARGET parser_exe PROPERTY OUTPUT_NAME parser)
 
 target_compile_features(parser_exe PRIVATE cxx_std_17)
 
-target_link_libraries(parser_exe PRIVATE parser_lib)
+target_link_libraries(parser_exe PRIVATE parser_lib simdjson::simdjson)
 
 # ---- Python bindings (nanobind) ----
 

@@ -1,8 +1,11 @@
+#include <sstream>
+#include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
 
-#include <nlohmann/json.hpp>
+#include <simdjson.h>
 
 #include "pcfg.hpp"
 
@@ -27,30 +30,42 @@ auto Pcfg::productions() const -> std::vector<LetterProd> const&
     return m_productions;
 }
 
-auto pcfg_from_json(nlohmann::json const& input) -> Pcfg
+auto pcfg_from_json(std::string_view json) -> Pcfg
 {
-    std::vector<LetterProd> productions{};
-    for (auto&& rule : input["rules"]) {
-        auto lhs = rule["lhs"].get<std::string>();
-        auto prob = rule["prob"].get<float>();
-        auto rhs = std::vector<std::variant<Nonterminal, parser::LetterType>>{};
-        for (auto&& item : rule["rhs"]) {
-            if (item.is_object()) {
-                rhs.emplace_back(Nonterminal(item["name"].get<std::string>()));
+    namespace oj = simdjson::ondemand;
+
+    oj::parser parser;
+    auto padded = simdjson::padded_string(json);
+    oj::document doc = parser.iterate(padded);
+
+    // Read start_symbol before iterating rules so on-demand parsing stays
+    // forward-only (the document lists start_symbol first).
+    const std::string start_symbol {std::string_view {doc["start_symbol"].get_string()}};
+
+    std::vector<LetterProd> productions {};
+    for (auto rule : doc["rules"]) {
+        const std::string lhs {std::string_view {rule["lhs"].get_string()}};
+        auto rhs = std::vector<std::variant<Nonterminal, LetterType>> {};
+        for (auto item : rule["rhs"]) {
+            if (item.type() == oj::json_type::object) {
+                rhs.emplace_back(Nonterminal(std::string {std::string_view {item["name"].get_string()}}));
             } else {
-                rhs.emplace_back(item.get<std::string>()[0]);
+                const std::string_view term = item.get_string();
+                rhs.emplace_back(static_cast<LetterType>(term[0]));
             }
         }
-        productions.push_back({Nonterminal(lhs), rhs, prob});
+        const auto prob = static_cast<float>(double {rule["prob"].get_double()});
+        productions.push_back({Nonterminal(lhs), std::move(rhs), prob});
     }
 
-    const auto start_symbol = input["start_symbol"].get<std::string>();
-    return Pcfg(Nonterminal(start_symbol), productions);
+    return Pcfg(Nonterminal(start_symbol), std::move(productions));
 }
 
 auto pcfg_from_json(std::istream& istream) -> Pcfg
 {
-    return pcfg_from_json(nlohmann::json::parse(istream));
+    std::ostringstream buffer;
+    buffer << istream.rdbuf();
+    return pcfg_from_json(buffer.str());
 }
 
 }  // namespace parser

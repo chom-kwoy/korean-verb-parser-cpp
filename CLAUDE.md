@@ -8,7 +8,7 @@ A C++ Viterbi parser for **probabilistic context-free grammars (PCFG)**, applied
 
 ## Build, run, test
 
-Dependencies (fmt, nlohmann_json, Catch2) are vendored via CMake `FetchContent` — no external package manager is required. A network connection is needed on first configure to clone deps.
+Dependencies (fmt, nlohmann_json, simdjson, Catch2) are vendored via CMake `FetchContent` — no external package manager is required. A network connection is needed on first configure to clone deps. (simdjson does the fast *input* JSON parsing; nlohmann_json is kept only for *output* serialization — `Tree::json()` and `main.cpp`'s response. simdjson is consumed `SYSTEM` and built with warnings disabled, since its own sources aren't clean under the strict CI flag set, notably `-Werror=float-equal`.)
 
 Plain build:
 ```sh
@@ -56,7 +56,7 @@ The pipeline is: **JSON grammar → `Pcfg` → `ViterbiParser::parse` → `Tree`
 - **`main.cpp`** — stdin/stdout JSON driver; wraps everything in try/catch and emits `{"status": "success"|"error", ...}`.
 
 ### Adding to / changing the grammar interface
-The JSON rule format (used by both `main.cpp` and the `[test_complex]` test) is: each rule has `lhs` (string), `prob` (float), and `rhs` (array where an object `{"name": ...}` is a Nonterminal and a bare string's first char is a terminal). `examples/prods.json` is a real Korean-verb grammar fixture.
+The JSON rule format (used by both `main.cpp` and the `[test_complex]` test) is: each rule has `lhs` (string), `prob` (float), and `rhs` (array where an object `{"name": ...}` is a Nonterminal and a bare string's first char is a terminal). `examples/prods.json` is a real Korean-verb grammar fixture. `pcfg_from_json` takes a `std::string_view` (or `std::istream&`) and parses it with **simdjson on-demand**, building the production vector directly — no intermediate DOM. `main.cpp` parses the request once for the grammar via `pcfg_from_json` and does a second cheap simdjson pass for `sentence`/`num_trees`.
 
 ## Conventions / gotchas
 
