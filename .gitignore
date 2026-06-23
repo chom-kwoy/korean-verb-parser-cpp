@@ -14,3 +14,4 @@ CMakeLists.txt.user
 CMakeUserPresets.json
 compile_commands.json
 .qtcreator/
+examples/prods_full.json
